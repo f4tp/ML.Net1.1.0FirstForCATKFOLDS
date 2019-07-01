@@ -6,4 +6,18 @@
     <RootNamespace>ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="Data\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML" Version="1.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Data\KFoldDatausing1.00etcJustIrtStuff.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
