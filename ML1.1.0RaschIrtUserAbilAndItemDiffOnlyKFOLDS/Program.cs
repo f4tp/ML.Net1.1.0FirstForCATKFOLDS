@@ -60,9 +60,10 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
             return dataView;
         }
 
-        //CalibratedBinaryClassificationMetrics
+        //calibrated version below
+        // public static IReadOnlyList<TrainCatalogBase.CrossValidationResult<CalibratedBinaryClassificationMetrics>> BuildAndTrain(MLContext mlContext, IDataView splitTrainSet)
 
-        public static IReadOnlyList<TrainCatalogBase.CrossValidationResult<CalibratedBinaryClassificationMetrics>> BuildAndTrain(MLContext mlContext, IDataView splitTrainSet)
+        public static IReadOnlyList<TrainCatalogBase.CrossValidationResult<BinaryClassificationMetrics>> BuildAndTrain(MLContext mlContext, IDataView splitTrainSet)
         {
             //var estimator = mlContext.Transforms.Text.FeaturizeText(outputColumnName: "Features", inputColumnName: nameof(QuestionData.QuestionText))
                        
@@ -79,10 +80,16 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
 
             //LogReg Stopchastic used as this was given in the sample, which used calibrated model, will change to SVM
 
-            IEstimator<ITransformer> svmLinAlg = mlContext.BinaryClassification.Trainers.SdcaLogisticRegression();
-            var cvResults = mlContext.BinaryClassification.CrossValidate(transformedDataStage2, svmLinAlg, numberOfFolds: 10);
+            //IEstimator<ITransformer> svmLinAlg = mlContext.BinaryClassification.Trainers.SdcaLogisticRegression();
+            //var cvResults = mlContext.BinaryClassification.CrossValidate(transformedDataStage2, svmLinAlg, numberOfFolds: 10);
 
-            
+
+            //svm linear now used
+
+            IEstimator<ITransformer> svmLinAlg = mlContext.BinaryClassification.Trainers.LinearSvm();
+            var cvResults = mlContext.BinaryClassification.CrossValidateNonCalibrated(transformedDataStage2, svmLinAlg, numberOfFolds: 10);
+
+
             Console.WriteLine("=============== Create and Train the Model ===============");
            
             Console.WriteLine("=============== End of training ===============");
@@ -99,7 +106,10 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
 
         }
 
-        public static void Evaluate(MLContext mlContext, IReadOnlyList<TrainCatalogBase.CrossValidationResult<CalibratedBinaryClassificationMetrics>> cvResults, IDataView splitTestSet)
+        //calibrated version below
+        //public static void Evaluate(MLContext mlContext, IReadOnlyList<TrainCatalogBase.CrossValidationResult<CalibratedBinaryClassificationMetrics>> cvResults, IDataView splitTestSet)
+
+        public static void Evaluate(MLContext mlContext, IReadOnlyList<TrainCatalogBase.CrossValidationResult<BinaryClassificationMetrics>> cvResults, IDataView splitTestSet)
         {
 
             //model contains these things
