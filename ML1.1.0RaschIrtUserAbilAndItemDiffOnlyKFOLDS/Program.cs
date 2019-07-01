@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Diagnostics;
+using System.Threading;
 using static Microsoft.ML.DataOperationsCatalog;
 
 namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
@@ -23,8 +25,7 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
         static readonly string _envCurr = Environment.CurrentDirectory;
         static readonly string _dataPathNew = Directory.GetParent(_envCurr).FullName;
 
-
-
+       
         static readonly string _dataPathNewAgain = Directory.GetParent(_dataPathNew).Parent.FullName;
         static readonly string _dataPath = Path.Combine(_dataPathNewAgain, "Data", "KFoldDatausing1.00etcJustIrtStuff.txt");
 
@@ -41,9 +42,13 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
             //now gets standard data returned, not split data
             var splitDataView = LoadData(mlContext);
             //variable below is now not just a model, but a model for each fol, train/test data for each fold, metrcis object for each fold
-            var model = BuildAndTrain(mlContext, splitDataView);
-            Evaluate(mlContext, model, splitDataView);
-            //UseModelWithSingleItem(mlContext, model);
+            IReadOnlyList<TrainCatalogBase.CrossValidationResult<BinaryClassificationMetrics>> model = BuildAndTrain(mlContext, splitDataView);
+
+            //vairable below is for the calibrated variant on the variable above
+            //IReadOnlyList<TrainCatalogBase.CrossValidationResult<CalibratedBinaryClassificationMetrics>> model = BuildAndTrain(mlContext, splitDataView);
+
+            var topModel = Evaluate(mlContext, model, splitDataView);
+            //UseModelWithSingleItem(mlContext, topModel);
             Console.ReadLine();
 
         }
@@ -61,12 +66,12 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
         }
 
         //calibrated version below
-        // public static IReadOnlyList<TrainCatalogBase.CrossValidationResult<CalibratedBinaryClassificationMetrics>> BuildAndTrain(MLContext mlContext, IDataView splitTrainSet)
+        //public static IReadOnlyList<TrainCatalogBase.CrossValidationResult<CalibratedBinaryClassificationMetrics>> BuildAndTrain(MLContext mlContext, IDataView splitTrainSet)
 
         public static IReadOnlyList<TrainCatalogBase.CrossValidationResult<BinaryClassificationMetrics>> BuildAndTrain(MLContext mlContext, IDataView splitTrainSet)
         {
             //var estimator = mlContext.Transforms.Text.FeaturizeText(outputColumnName: "Features", inputColumnName: nameof(QuestionData.QuestionText))
-                       
+
 
             //transformedData used to be pipeline when algorithm was in it also
             IEstimator<ITransformer> transformedDataStage1 = mlContext.Transforms.Text.FeaturizeText(inputColumnName: "UserAbility", outputColumnName: "UserAbilityFeaturized")
@@ -74,7 +79,17 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
                 .Append(mlContext.Transforms.Text.FeaturizeText(inputColumnName: "QuestionDifficulty", outputColumnName: "QuestionDifficultyFeaturized")
                 .Append(mlContext.Transforms.Concatenate("Features", "UserAbilityFeaturized", "QuestionDifficultyFeaturized")));
 
-            //what does the fit method do? These two methods involve transformign teh data for use in the algorithm, unspecific though
+
+            //used belw to help with stop watch
+            //https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch?redirectedfrom=MSDN&view=netframework-4.8
+
+            Console.WriteLine("===================== Starting Stopwatch ====================");
+
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
+
+            //what does the fit method do? These two methods involve transformign the data for use in the algorithm, unspecific though
             var dataPrepTransformer = transformedDataStage1.Fit(splitTrainSet);
             IDataView transformedDataStage2 = dataPrepTransformer.Transform(splitTrainSet);
 
@@ -86,30 +101,39 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
 
             //svm linear now used
 
-            IEstimator<ITransformer> svmLinAlg = mlContext.BinaryClassification.Trainers.LinearSvm();
+            IEstimator<ITransformer> svmLinAlg = mlContext.BinaryClassification.Trainers.FastForest();
             var cvResults = mlContext.BinaryClassification.CrossValidateNonCalibrated(transformedDataStage2, svmLinAlg, numberOfFolds: 10);
 
 
-            Console.WriteLine("=============== Create and Train the Model ===============");
-           
-            Console.WriteLine("=============== End of training ===============");
-            Console.WriteLine();
+            //Console.WriteLine("=============== Create and Train the Model ===============");
+
+            //Console.WriteLine("=============== End of training ===============");
+            //Console.WriteLine();
 
             //the cvResults object will contain a lot of things:
 
-           // 1. TrainTestData object for each fold of data
-           // 2. a model for each fold
-           // 3. a metric for each fold
-        
+            // 1. TrainTestData object for each fold of data
+            // 2. a model for each fold
+            // 3. a metric for each fold
+
+            Console.WriteLine("===================== Stopwatch Stopped=========================");
+            stopWatch.Stop();
+            TimeSpan ts = stopWatch.Elapsed;
+            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            ts.Hours, ts.Minutes, ts.Seconds,
+            ts.Milliseconds / 10);
+            Console.WriteLine($"====================Time taken: {elapsedTime}===================");
+
             return cvResults;
 
 
         }
 
         //calibrated version below
-        //public static void Evaluate(MLContext mlContext, IReadOnlyList<TrainCatalogBase.CrossValidationResult<CalibratedBinaryClassificationMetrics>> cvResults, IDataView splitTestSet)
+        //public static ITransformer Evaluate(MLContext mlContext, IReadOnlyList<TrainCatalogBase.CrossValidationResult<CalibratedBinaryClassificationMetrics>> cvResults, IDataView splitTestSet)
 
-        public static void Evaluate(MLContext mlContext, IReadOnlyList<TrainCatalogBase.CrossValidationResult<BinaryClassificationMetrics>> cvResults, IDataView splitTestSet)
+        //noncalibrated version below
+        public static ITransformer Evaluate(MLContext mlContext, IReadOnlyList<TrainCatalogBase.CrossValidationResult<BinaryClassificationMetrics>> cvResults, IDataView splitTestSet)
         {
 
             //model contains these things
@@ -117,9 +141,15 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
             // 2. a model for each fold
             // 3. a metric for each fold
 
-
+           
             Console.WriteLine("=============== Evaluating Model accuracy with Test data===============");
 
+            //problem in  here I think - the evaluate method is not being called on the mlContext passed in, but called standalone whcih needs to be updated
+
+            //need to get ITransformer model from cvResults
+            //ITransformer modelToUse = cvResults.
+            
+            
 
             IEnumerable<double> rSquared =  cvResults
                 .Select(fold => fold.Metrics.Accuracy);
@@ -128,13 +158,25 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
                 .Select(fold => fold.Model)
                 .ToArray();
             ITransformer topModel = models[0];
+            
+            //call predict with single instance method here using the model that has been brought out
 
             foreach(double acc in rSquared)
             {
                 Console.WriteLine(acc.ToString());
             }
 
-            Console.WriteLine($"Higest Accuracy: {topModel.ToString()}");
+            //Console.WriteLine($"Higest Accuracy: {topModel.ToString()}");
+
+            //to fix problem, need to use top model to train and update mlContext
+          
+       
+            
+            
+
+
+
+            return topModel;
 
 
 
@@ -167,6 +209,7 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
         public static void UseModelWithSingleItem(MLContext mlContext, ITransformer model)
         {
 
+            //problem here - it is expecting the features column in the model called 'feature' but the other program expects the features column called 'features'... and it is called 'features', don't know how to change
             PredictionEngine<QuestionData, QuestionPrediction> predictionFunction = mlContext.Model.CreatePredictionEngine<QuestionData, QuestionPrediction>(model);
 
             QuestionData sampleStatement = new QuestionData
@@ -191,5 +234,9 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
             Console.WriteLine();
 
         }
+
+        
+       
     }
 }
+
