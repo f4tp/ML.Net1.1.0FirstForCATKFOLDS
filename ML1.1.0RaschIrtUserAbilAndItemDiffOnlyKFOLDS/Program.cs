@@ -27,7 +27,7 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
 
        
         static readonly string _dataPathNewAgain = Directory.GetParent(_dataPathNew).Parent.FullName;
-        static readonly string _dataPath = Path.Combine(_dataPathNewAgain, "Data", "KFoldDatausing1.00etcJustIrtStuff.txt");
+        static readonly string _dataPath = Path.Combine(_dataPathNewAgain, "Data", "67QuestsKFoldsMainQ22Updated.txt");
         static readonly string _modelPath = Path.Combine(_dataPathNewAgain, "Data", "FafmIrtBasicData.zip");
 
         static IDataView transformedDataStage2;
@@ -84,7 +84,7 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
                 .Append(mlContext.Transforms.Concatenate("Features", "UserAbilityFeaturized", "QuestionDifficultyFeaturized")));
 
 
-            //used belw to help with stop watch
+            //used below to help with stop watch
             //https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch?redirectedfrom=MSDN&view=netframework-4.8
 
             Console.WriteLine("===================== Starting Stopwatch ====================");
@@ -93,14 +93,15 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
             stopWatch.Start();
 
 
-            //what does the fit method do? These two methods involve transformign the data for use in the algorithm, unspecific though
+            //what does the fit method do? These two methods involve transforming the data for use in the algorithm, unspecific though
             var dataPrepTransformer = transformedDataStage1.Fit(splitTrainSet);
             transformedDataStage2 = dataPrepTransformer.Transform(splitTrainSet);
-
+            Console.WriteLine(splitTrainSet.Schema.ToString());
             //LogReg Stopchastic used as this was given in the sample, which used calibrated model, will change to SVM
 
             IEstimator<ITransformer> svmLinAlg = mlContext.BinaryClassification.Trainers.FieldAwareFactorizationMachine();
             var cvResults = mlContext.BinaryClassification.CrossValidate(transformedDataStage2, svmLinAlg, numberOfFolds: 10);
+           
 
 
             //svm linear now used
