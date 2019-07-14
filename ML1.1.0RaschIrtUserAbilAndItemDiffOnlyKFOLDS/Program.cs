@@ -51,7 +51,7 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
             IReadOnlyList<TrainCatalogBase.CrossValidationResult<CalibratedBinaryClassificationMetrics>> model = BuildAndTrain(mlContext, splitDataView);
 
             var topModel = Evaluate(mlContext, model, splitDataView);
-            //UseModelWithSingleItem(mlContext, topModel);
+            UseModelWithSingleItem(mlContext, topModel);
             SaveModelAsFile(mlContext, topModel);
             Console.ReadLine();
 
@@ -99,7 +99,7 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
             Console.WriteLine(splitTrainSet.Schema.ToString());
             //LogReg Stopchastic used as this was given in the sample, which used calibrated model, will change to SVM
 
-            IEstimator<ITransformer> svmLinAlg = mlContext.BinaryClassification.Trainers.FieldAwareFactorizationMachine();
+            IEstimator<ITransformer> svmLinAlg = mlContext.BinaryClassification.Trainers.Prior();
             var cvResults = mlContext.BinaryClassification.CrossValidate(transformedDataStage2, svmLinAlg, numberOfFolds: 10);
            
 
@@ -171,15 +171,26 @@ namespace ML1._1._0RaschIrtUserAbilAndItemDiffOnlyKFOLDS
                 Console.WriteLine(acc.ToString());
                 total += acc;
             }
-            Console.WriteLine($"average: {total / 10}");
 
+            Console.WriteLine($"average: {total / 10}");
+            Console.WriteLine($"Highest accuracy: {rSquared.Max()}");
+            double indexindexOfHighestFold = 0;
+
+            for (var i = 0; i < rSquared.Count(); i++)
+            {
+                if (rSquared.ElementAt(i) == rSquared.Max())
+                {
+                    indexindexOfHighestFold = i;
+                }
+            }
+            Console.WriteLine($"Best Fold: {indexindexOfHighestFold + 1}");
             //Console.WriteLine($"Higest Accuracy: {topModel.ToString()}");
 
             //to fix problem, need to use top model to train and update mlContext
-          
-       
-            
-            
+
+
+
+
 
 
 
